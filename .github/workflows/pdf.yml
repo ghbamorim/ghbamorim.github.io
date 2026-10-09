@@ -1,0 +1,33 @@
+name: Generate resume PDF
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - index.html
+      - scripts/generate-pdf.js
+      - .github/workflows/pdf.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Generate PDF
+        run: node scripts/generate-pdf.js
+      - name: Upload PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: resume-pdf
+          path: resume.pdf
