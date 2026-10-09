@@ -1,33 +1,56 @@
-name: Generate resume PDF
+
+name: Build and deploy resume
 
 on:
   push:
     branches: [main]
-    paths:
-      - index.html
-      - scripts/generate-pdf.js
-      - .github/workflows/pdf.yml
   workflow_dispatch:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
-  pdf:
+  deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
       - name: Install Playwright
         run: |
           npm install --no-save playwright@1.58.2
           npx playwright install --with-deps chromium
+
       - name: Generate PDF
         run: node scripts/generate-pdf.js
-      - name: Upload PDF
-        uses: actions/upload-artifact@v4
+
+      - name: Prepare website
+        run: |
+          mkdir -p dist
+          cp index.html resume.pdf dist/
+          if [ -d assets ]; then cp -R assets dist/; fi
+          touch dist/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
         with:
-          name: resume-pdf
-          path: resume.pdf
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
